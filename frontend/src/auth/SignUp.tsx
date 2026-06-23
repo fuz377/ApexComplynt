@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthContext } from '../hooks/context/AuthContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import AuthLayout from './AuthLayout';
-import { useEffect } from 'react';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
-  const { user, register, isLoading, error, clearError } = useAuth();
+  const { user, register, isLoading, error, clearError } = useAuthContext();
   
     
     useEffect(() => {

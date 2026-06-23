@@ -5,6 +5,11 @@ import cookieParser from 'cookie-parser';
 import connectDB from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import complaintRoutes from './routes/complaintRoutes.js';
+import { log } from 'console';
+
+import dns from "node:dns/promises";
+dns.setServers(["1.1.1.1"]);
 
 dotenv.config();
 
@@ -26,6 +31,7 @@ app.use(cors({
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

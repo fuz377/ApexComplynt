@@ -1,15 +1,45 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import {
   AuthResponse,
   ApiError,
   RegisterData,
   LoginData,
   ApiResponse,
+  User,
   Complaint,
-  ComplaintStatus,
-  ComplaintPriority,
-  User
+  Comment
 } from '../types';
+
+// ================= HELPERS =================
+
+// Transform MongoDB complaint data to match frontend types
+const normalizeComplaint = (data: any): Complaint => {
+  const id = data._id || data.id;
+  return {
+    id,
+    title: data.title,
+    description: data.description,
+    category: data.category || 'General',
+    status: data.status,
+    priority: data.priority,
+    isAnonymous: data.isAnonymous,
+    submittedBy: data.submittedBy,
+    userId: data.user?._id || data.userId,
+    dateSubmitted: data.createdAt || data.dateSubmitted,
+    lastUpdated: data.updatedAt || data.lastUpdated,
+    comments: (data.comments || []).map((c: any) => ({
+      id: c._id || c.id,
+      author: c.author,
+      text: c.text,
+      timestamp: c.createdAt || c.timestamp,
+      isAdmin: c.isAdmin,
+      isSystem: c.isSystem,
+    })),
+    aiSummary: data.aiSummary,
+    suggestedResolution: data.suggestedResolution,
+    researchData: data.researchData,
+  };
+};
 
 // ================= AXIOS INSTANCE =================
 
@@ -46,6 +76,30 @@ class API {
     );
   }
 
+  // ================= GENERIC METHODS =================
+
+  get<T = unknown>(url: string): Promise<AxiosResponse<T>> {
+    return this.api.get<T>(url);
+  }
+
+  post<T = unknown, D = unknown>(
+    url: string,
+    data?: D
+  ): Promise<AxiosResponse<T>> {
+    return this.api.post<T>(url, data);
+  }
+
+  put<T = unknown, D = unknown>(
+    url: string,
+    data?: D
+  ): Promise<AxiosResponse<T>> {
+    return this.api.put<T>(url, data);
+  }
+
+  delete<T = unknown>(url: string): Promise<AxiosResponse<T>> {
+    return this.api.delete<T>(url);
+  }
+
   // ================= AUTH =================
 
   register(userData: RegisterData) {
@@ -73,7 +127,10 @@ class API {
   }
 
   resetPassword(token: string, password: string) {
-    return this.api.put<ApiResponse>(`/auth/reset-password/${token}`, { password });
+    return this.api.put<ApiResponse>(
+      `/auth/reset-password/${token}`,
+      { password }
+    );
   }
 
   refreshToken() {
@@ -106,113 +163,75 @@ class API {
     return this.api.put('/users/profile', userData);
   }
 
-  changePassword(passwordData: { currentPassword: string; newPassword: string }) {
+  changePassword(passwordData: {
+    currentPassword: string;
+    newPassword: string;
+  }) {
     return this.api.put('/users/change-password', passwordData);
   }
 }
 
-// ✅ single export
+// ================= MAIN API EXPORT =================
+
 export const api = new API();
 
-
-// ================= LOCAL STORAGE (COMPLAINT MOCK) =================
-
-const STORAGE_KEY = 'civic_complaints';
-
-const getStorage = (): Complaint[] => {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-};
-
-const setStorage = (data: Complaint[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-};
+// ================= COMPLAINT API =================
 
 export const complaintApi = {
-  getComplaints: async (): Promise<Complaint[]> => {
-    return getStorage();
+  getComplaints() {
+    return api.get<{ data: any[] }>('/complaints').then(res => ({
+      ...res,
+      data: {
+        data: (Array.isArray(res.data.data) ? res.data.data : []).map(normalizeComplaint)
+      }
+    }));
   },
 
-  getComplaintById: async (id: string): Promise<Complaint | null> => {
-    const all = getStorage();
-    return all.find(c => c.id === id) || null;
+  getComplaint(id: string) {
+    return api.get<{ data: any }>(`/complaints/${id}`).then(res => ({
+      ...res,
+      data: {
+        data: normalizeComplaint(res.data.data)
+      }
+    }));
   },
 
-  submitComplaint: async (data: {
+  getComplaintById(id: string) {
+    return complaintApi.getComplaint(id);
+  },
+
+  submitComplaint(data: {
     title: string;
     description: string;
     isAnonymous: boolean;
-    user?: User | null;
-  }): Promise<Complaint> => {
-    const newComplaint: Complaint = {
-      id: `RPT-${Math.floor(1000 + Math.random() * 9000)}`,
-      title: data.title,
-      description: data.description,
-      isAnonymous: data.isAnonymous,
-      category: 'General',
-      priority: ComplaintPriority.MEDIUM,
-      status: ComplaintStatus.OPEN,
-      submittedBy: data.isAnonymous
-  ? 'Anonymous'
-  : data.user?.name || 'Unknown',
-userId: data.user?._id,
-      dateSubmitted: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
-      comments: []
-    };
-
-    const all = getStorage();
-    setStorage([newComplaint, ...all]);
-    return newComplaint;
+  }) {
+    return api.post<{ data: any }>('/complaints', data).then(res => ({
+      ...res,
+      data: {
+        data: normalizeComplaint(res.data.data)
+      }
+    }));
   },
 
-  updateStatus: async (id: string, status: ComplaintStatus): Promise<void> => {
-    const all = getStorage();
-    const updated = all.map(c =>
-      c.id === id
-        ? {
-            ...c,
-            status,
-            lastUpdated: new Date().toISOString(),
-            comments: [
-              ...c.comments,
-              {
-                id: Date.now().toString(),
-                author: 'System',
-                text: `Status changed to ${status.replace('_', ' ')}`,
-                timestamp: new Date().toISOString(),
-                isAdmin: true,
-                isSystem: true
-              }
-            ]
-          }
-        : c
-    );
-    setStorage(updated);
+  updateStatus(id: string, status: string) {
+    return api.put<{ data: any }>(`/complaints/${id}/status`, { status }).then(res => ({
+      ...res,
+      data: {
+        data: normalizeComplaint(res.data.data)
+      }
+    }));
   },
 
-  addComment: async (id: string, text: string, isAdmin: boolean): Promise<void> => {
-    const all = getStorage();
-    const updated = all.map(c =>
-      c.id === id
-        ? {
-            ...c,
-            comments: [
-              ...c.comments,
-              {
-                id: Date.now().toString(),
-                author: isAdmin ? 'Admin' : 'User',
-                text,
-                timestamp: new Date().toISOString(),
-                isAdmin
-              }
-            ]
-          }
-        : c
-    );
-    setStorage(updated);
-  }, deleteComplaint: async (id: string): Promise<void> => {
-  const all = getStorage();
-  const updated = all.filter(c => c.id !== id);
-  setStorage(updated);
-}
+  addComment(id: string, text: string) {
+    return api.post<{ data: any }>(`/complaints/${id}/comment`, { text }).then(res => ({
+      ...res,
+      data: {
+        data: normalizeComplaint(res.data.data)
+      }
+    }));
+  },
+
+  deleteComplaint(id: string) {
+    return api.delete(`/complaints/${id}`);
+  }
 };
