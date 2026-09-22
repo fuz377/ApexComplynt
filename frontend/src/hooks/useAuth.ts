@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { User, RegisterData, LoginData, ApiError } from '../types';
+import { User, RegisterData, LoginData, ApiError, AuthResponse } from '../types';
 import { api } from '../services/api';
+
 
 export interface UseAuthReturn {
   user: User | null;
   isLoading: boolean;
   isCheckingAuth: boolean;
   error: string | null;
-  register: (data: RegisterData) => Promise<void>;
-  login: (data: LoginData) => Promise<void>;
+  register: (data: RegisterData) => Promise<AuthResponse>;
+  login: (data: LoginData) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -34,35 +35,39 @@ export const useAuth = (): UseAuthReturn => {
     }
   };
 
-  const register = async (data: RegisterData) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.register(data);
-      setUser(response.data.data);
-    } catch (err) {
-      const apiError = err as ApiError;
-      setError(apiError.message || 'Registration failed');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const register = async (data: RegisterData): Promise<AuthResponse> => {
+  setIsLoading(true);
+  setError(null);
 
-  const login = async (data: LoginData) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.login(data);
-      setUser(response.data.data);
-    } catch (err) {
-      const apiError = err as ApiError;
-      setError(apiError.message || 'Login failed');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    const response = await api.register(data);
+    setUser(response.data.data);
+
+    return response.data; // ✅ FIX: return AuthResponse
+  } catch (err) {
+    const apiError = err as ApiError;
+    setError(apiError.message || 'Registration failed');
+    throw err;
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const login = async (data: LoginData) => {
+  setIsLoading(true);
+  setError(null);
+  try {
+    const response = await api.login(data);
+    setUser(response.data.data);
+    return response.data; // ✅ ADD THIS LINE
+  } catch (err) {
+    const apiError = err as ApiError;
+    setError(apiError.message || 'Login failed');
+    throw err;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const logout = async () => {
     setIsLoading(true);

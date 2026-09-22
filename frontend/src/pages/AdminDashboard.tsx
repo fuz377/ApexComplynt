@@ -10,72 +10,96 @@ const AdminDashboard: React.FC = () => {
   const [filter, setFilter] = useState<ComplaintStatus | 'ALL'>('ALL');
 
   const fetchData = async () => {
-    setLoading(true);
-    const data = await complaintApi.getComplaints();
-    setComplaints(data);
-    setLoading(false);
-  };
-
- useEffect(() => {
-  const load = async () => {
-    setLoading(true);
     try {
-      const data = await complaintApi.getComplaints();
-      setComplaints(data);
-    } catch (err) {
-      console.error(err);
+      setLoading(true);
+
+      const response = await complaintApi.getComplaints();
+
+      const result = response as {
+        data: {
+          data?: Complaint[];
+        } | Complaint[];
+      };
+
+      const complaintsData = Array.isArray(result.data)
+        ? result.data
+        : result.data.data || [];
+
+      setComplaints(complaintsData);
+    } catch (error) {
+      console.error('Failed to fetch complaints:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  load();
-}, []);
-
-  const handleUpdateStatus = async (id: string, status: ComplaintStatus) => {
-    await complaintApi.updateStatus(id, status);
+  useEffect(() => {
     fetchData();
+  }, []);
+
+  const handleUpdateStatus = async (
+    id: string,
+    status: ComplaintStatus
+  ) => {
+    try {
+      await complaintApi.updateStatus(id, status);
+      fetchData();
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    // const confirmed = confirm('Delete this complaint?');
-    // if (!confirmed) return;
+    try {
+      const confirmed = window.confirm(
+        'Are you sure you want to delete this complaint?'
+      );
 
-    const all = await complaintApi.getComplaints();
-    const updated = all.filter(c => c.id !== id);
-    localStorage.setItem('civic_complaints', JSON.stringify(updated));
-    fetchData();
+      if (!confirmed) return;
+
+      await complaintApi.deleteComplaint(id);
+
+      setComplaints((prev) =>
+        prev.filter((complaint) => complaint.id !== id)
+      );
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const filtered = filter === 'ALL'
-    ? complaints
-    : complaints.filter(c => c.status === filter);
-
-  if (loading) return <div className="p-6">Loading...</div>;
+  const filtered =
+    filter === 'ALL'
+      ? complaints
+      : complaints.filter((c) => c.status === filter);
 
   const handleFilterChange = (value: string) => {
-  if (value === 'ALL') {
-    setFilter('ALL');
-  } else {
-    setFilter(value as ComplaintStatus);
+    if (value === 'ALL') {
+      setFilter('ALL');
+    } else {
+      setFilter(value as ComplaintStatus);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">Loading complaints...</div>;
   }
-};
+
   return (
     <div className="p-6 space-y-6">
-
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold">Admin Panel</h1>
 
         <select
-  value={filter}
-  onChange={(e) => handleFilterChange(e.target.value)}
-  className="border px-3 py-1 text-sm rounded"
->
+          value={filter}
+          onChange={(e) => handleFilterChange(e.target.value)}
+          className="border px-3 py-1 text-sm rounded"
+        >
           <option value="ALL">All</option>
           <option value="OPEN">Open</option>
           <option value="IN_PROGRESS">In Progress</option>
           <option value="RESOLVED">Resolved</option>
+          <option value="CLOSED">Closed</option>
         </select>
       </div>
 
@@ -99,9 +123,10 @@ const AdminDashboard: React.FC = () => {
                   <div className="font-medium">{c.title}</div>
                   <div className="text-xs text-gray-400">{c.id}</div>
                 </td>
-                  <td className="p-3">
-    {c.isAnonymous ? 'Anonymous' : c.submittedBy}
-  </td>
+
+                <td className="p-3">
+                  {c.isAnonymous ? 'Anonymous' : c.submittedBy}
+                </td>
 
                 <td className="p-3">{c.category}</td>
 
@@ -110,12 +135,13 @@ const AdminDashboard: React.FC = () => {
                 </td>
 
                 <td className="p-3 text-right space-x-2">
-
-                  {/* STATUS CHANGE */}
                   <select
                     value={c.status}
                     onChange={(e) =>
-                      handleUpdateStatus(c.id, e.target.value as ComplaintStatus)
+                      handleUpdateStatus(
+                        c.id,
+                        e.target.value as ComplaintStatus
+                      )
                     }
                     className="border text-xs px-2 py-1 rounded"
                   >
@@ -125,7 +151,6 @@ const AdminDashboard: React.FC = () => {
                     <option value="CLOSED">Closed</option>
                   </select>
 
-                  {/* VIEW */}
                   <Link
                     to={`/complaint/${c.id}`}
                     className="text-blue-600 text-xs"
@@ -133,22 +158,23 @@ const AdminDashboard: React.FC = () => {
                     View
                   </Link>
 
-                  {/* DELETE */}
                   <button
                     onClick={() => handleDelete(c.id)}
-                    className="p-2 text-white text-xs bg-red-500 hover:bg-red-800 hover:text-white cursor-pointer"
+                    className="p-2 text-white text-xs bg-red-500 hover:bg-red-800 cursor-pointer"
                   >
                     Delete
                   </button>
-
                 </td>
               </tr>
             ))}
 
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-gray-400">
-                  No complaints
+                <td
+                  colSpan={5}
+                  className="p-6 text-center text-gray-400"
+                >
+                  No complaints found
                 </td>
               </tr>
             )}

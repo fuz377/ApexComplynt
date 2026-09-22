@@ -1,31 +1,57 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Complaint } from "../types";
 import StatusBadge from "../components/StatusBadge";
 import { complaintApi } from "../services/api";
+import { useAuthContext } from "../hooks/context/AuthContext";
+import Alert from "../components/ui/Alert";
 
 const ComplaintDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuthContext();
   const [complaint, setComplaint] = useState<Complaint | null>(null);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      complaintApi.getComplaintById(id).then((data) => {
-        setComplaint(data);
+    const loadComplaint = async () => {
+      if (!id) return;
+
+      try {
+        const response = await complaintApi.getComplaint(id);
+        const complaintData = (response as {
+          data?: { data?: Complaint };
+        }).data?.data;
+
+        if (complaintData) {
+          setComplaint(complaintData);
+        }
+      } catch (err) {
+        console.error('Failed to load complaint:', err);
+      } finally {
         setLoading(false);
-      });
-    }
+      }
+    };
+
+    loadComplaint();
   }, [id]);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim() || !complaint) return;
 
-    await complaintApi.addComment(complaint.id, newComment, false);
-    const updated = await complaintApi.getComplaintById(complaint.id);
-    setComplaint(updated);
+    await complaintApi.addComment(complaint.id, newComment);
+    const response = await complaintApi.getComplaint(complaint.id);
+    const complaintData = (response as {
+      data?: { data?: Complaint };
+    }).data?.data;
+
+    if (complaintData) {
+      setComplaint(complaintData);
+    }
     setNewComment("");
   };
 
@@ -33,12 +59,23 @@ const ComplaintDetail: React.FC = () => {
     if (!complaint) return;
 
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this complaint?",
+      "Are you sure you want to delete this complaint?"
     );
     if (!confirmDelete) return;
 
-    await complaintApi.deleteComplaint(complaint.id);
-    window.location.href = "/"; // redirect after delete
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      await complaintApi.deleteComplaint(complaint.id);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      const errorMsg = (err as { message?: string })?.message || "Failed to delete complaint";
+      setError(errorMsg);
+      console.error('Delete failed:', err);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (loading)
@@ -79,14 +116,28 @@ const ComplaintDetail: React.FC = () => {
                       Submitted:{" "}
                       {new Date(complaint.dateSubmitted).toLocaleString()}
                     </p>
-                    <div className="flex gap-2 mt-5">
-                    <button
-                      onClick={handleDelete}
-                      className="text-lg px-3 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-800 cursor-pointer active:bg-red-800"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                    {error && (
+                      <Alert
+                        type="error"
+                        message={error}
+                        onClose={() => setError(null)}
+                      />
+                    )}
+                    {(user?.role === 'admin' || complaint.userId === user?._id) && (
+                      <div className="flex gap-2 mt-5">
+                        <button
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className={`text-lg px-3 py-1.5 rounded-md text-white font-medium transition-all ${
+                            isDeleting
+                              ? 'bg-red-400 cursor-not-allowed'
+                              : 'bg-red-500 hover:bg-red-800 cursor-pointer active:bg-red-800'
+                          }`}
+                        >
+                          {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                 </div>

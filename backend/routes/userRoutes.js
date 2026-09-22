@@ -6,7 +6,8 @@ import {
   updateUser,
   deleteUser,
   updateProfile,
-  changePassword
+  changePassword,
+  createUser
 } from '../controllers/userController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validationMiddleware.js';
@@ -43,7 +44,17 @@ router.put(
 router.use(authorize('admin'));
 
 router.route('/')
-  .get(getUsers);
+  .get(getUsers)
+  .post(
+    [
+      body('name').notEmpty().withMessage('Name is required'),
+      body('email').isEmail().withMessage('Please enter a valid email'),
+      body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+      body('role').optional().isIn(['user', 'admin']).withMessage('Invalid role')
+    ],
+    validate,
+    createUser
+  );
 
 router.route('/:id')
   .get(getUser)

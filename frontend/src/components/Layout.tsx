@@ -1,22 +1,23 @@
 import React, { useMemo } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { api } from "../services/api";
+// import { api } from "../services/api";
+import { useAuthContext } from "../hooks/context/AuthContext";
 
-interface LayoutProps {
-  isAdmin?: boolean;
-}
-
-const Layout: React.FC<LayoutProps> = ({ isAdmin = false }) => {
+const Layout: React.FC = () => {
   const location = useLocation();
+  const { user, logout } = useAuthContext();
+
+  const isAdmin = user?.role === "admin";
 
   const navItems = useMemo(() => {
     return isAdmin
       ? [
-          { label: "Dashboard", path: "/admin", exact: true },
-          { label: "Complaints", path: "/admin/list", exact: false },
+          { label: "Complaints", path: "/admin", exact: true },
+          { label: "Analytics", path: "/admin/analytics", exact: true },
+          { label: "Users", path: "/admin/users", exact: true },
         ]
       : [
-          { label: "My Dashboard", path: "/", exact: true },
+          { label: "My Dashboard", path: "/dashboard", exact: true },
           { label: "File Complaint", path: "/submit", exact: true },
           { label: "Tracker", path: "/tracker", exact: true },
         ];
@@ -29,22 +30,25 @@ const Layout: React.FC<LayoutProps> = ({ isAdmin = false }) => {
   };
 
   return (
-    <div className="min-h-screen flex">
-
-      {/* ✅ ADMIN SIDEBAR */}
+    <div className="min-h-screen flex flex-col">
+      {/* ✅ ADMIN NAVBAR */}
       {isAdmin && (
-        <aside className="w-64 bg-slate-900 text-white flex flex-col p-4">
-          <h2 className="text-lg font-bold mb-6">Admin Panel</h2>
+        <header className="h-auto py-4 bg-slate-900 flex justify-around items-center text-white">
+          <Link to="/admin">
+            <h2 className="text-blue-400 text-lg font-bold cursor-pointer">
+              Apex Compliant
+            </h2>
+          </Link>
 
-          <nav className="space-y-2">
+          <nav className="flex items-center">
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`block px-3 py-2 rounded text-sm ${
+                className={`mx-1 px-3 py-2 rounded text-sm ${
                   isActive(item.path, item.exact)
-                    ? "bg-slate-700"
-                    : "hover:bg-slate-800"
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-blue-700"
                 }`}
               >
                 {item.label}
@@ -52,50 +56,62 @@ const Layout: React.FC<LayoutProps> = ({ isAdmin = false }) => {
             ))}
           </nav>
 
-          <div className="mt-auto pt-6">
+          <button
+            onClick={logout}
+            className="bg-red-600 py-2 px-3 rounded text-sm hover:bg-red-700"
+          >
+            Logout
+          </button>
+        </header>
+      )}
+
+      {/* ✅ USER NAVBAR */}
+      {!isAdmin && (
+        <header className="bg-white border-b px-6 py-4 flex justify-between items-center">
+          <h2 className="font-bold text-lg text-blue-600">
+            Apex Compliant
+          </h2>
+
+          <div className="flex gap-3 items-center">
+            <nav className="flex items-center">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`mx-1 px-3 py-2 rounded text-sm ${
+                    isActive(item.path, item.exact)
+                      ? "bg-blue-600 text-white"
+                      : "hover:bg-gray-200"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            {/* Only show if admin */}
+            {user?.role === "admin" && (
+              <Link
+                to="/admin"
+                className="text-sm bg-slate-100 px-3 py-1 rounded"
+              >
+                Admin Mode
+              </Link>
+            )}
+
             <button
-              onClick={async () => await api.logout()}
-              className="w-full bg-red-600 py-2 rounded text-sm hover:bg-red-700"
+              onClick={logout}
+              className="text-sm py-2 px-3 bg-red-600 text-white rounded-md hover:bg-red-700"
             >
               Logout
             </button>
           </div>
-        </aside>
+        </header>
       )}
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col">
-
-        {/* ✅ TOPBAR (ONLY FOR USER) */}
-        {!isAdmin && (
-          <header className="bg-white border-b px-6 py-4 flex justify-between items-center">
-            <Link to="/" className="font-bold text-lg">
-              CivicResolve
-            </Link>
-
-            <div className="flex gap-3 items-center">
-              <Link
-                to="/admin"
-                className="text-xs bg-slate-100 px-3 py-1 rounded"
-              >
-                Admin
-              </Link>
-
-              <button
-                onClick={async () => await api.logout()}
-                className="text-sm px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Logout
-              </button>
-            </div>
-          </header>
-        )}
-
-        {/* ✅ PAGE CONTENT */}
-        <main className={`${isAdmin ? "p-6" : "mx-20 my-20"}`}>
-          <Outlet />
-        </main>
-      </div>
+      <main className={`${isAdmin ? "p-6" : "mx-10 my-10"}`}>
+        <Outlet />
+      </main>
     </div>
   );
 };

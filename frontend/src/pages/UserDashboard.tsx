@@ -3,28 +3,47 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Complaint, ComplaintStatus } from '../types';
 import StatusBadge from '../components/StatusBadge';
+import { complaintApi } from '../services/api';
+import { useAuthContext } from '../hooks/context/AuthContext';
 
 const UserDashboard: React.FC = () => {
+  const { user } = useAuthContext();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  const loadComplaints = async () => {
-    try {
-      // For now, this is sync, but the pattern supports async later
-      const saved = localStorage.getItem('civic_complaints');
-      if (saved) {
-        const filtered = JSON.parse(saved).filter(
-          (c: Complaint) => !c.isAnonymous || c.submittedBy === 'CurrentUser'
-        );
-        setComplaints(filtered);
+  useEffect(() => {
+    if (!user) return;
+
+    const loadComplaints = async () => {
+      try {
+        setLoading(true);
+        const response = await complaintApi.getComplaints();
+        const result = response as {
+          data: { data?: Complaint[] } | Complaint[];
+        };
+
+        const complaintsData = Array.isArray(result.data)
+          ? result.data
+          : result.data.data || [];
+
+        setComplaints(complaintsData);
+      } catch (error) {
+        console.error('Failed to load complaints:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.log(error);  
-    }
-  };
+    };
 
-  loadComplaints();
-}, []);
+    loadComplaints();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="p-12 text-center">
+        <div className="text-slate-500">Loading your reports...</div>
+      </div>
+    );
+  }
 
   const stats = {
     total: complaints.length,

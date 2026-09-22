@@ -71,6 +71,7 @@ export interface Comment {
   timestamp: string;
   isAdmin: boolean;
   isSystem?: boolean;
+  _id?: string;  // MongoDB ID fallback
 }
 
 export interface Complaint {
