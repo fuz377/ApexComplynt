@@ -15,6 +15,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ComplaintForm from "./pages/ComplaintForm";
 import ComplaintDetail from "./pages/ComplaintDetail";
 import PublicTracker from "./pages/PublicTracker";
+import Analytics from "./pages/Analytics";
+import UserManagement from "./pages/UserManagement";
 
 // Protected Route
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -108,6 +110,22 @@ function AppContent() {
           element={
             <AdminRoute>
               <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/analytics"
+          element={
+            <AdminRoute>
+              <Analytics />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="admin/users"
+          element={
+            <AdminRoute>
+              <UserManagement />
             </AdminRoute>
           }
         />

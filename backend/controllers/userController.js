@@ -155,3 +155,42 @@ export const changePassword = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Create new user (admin only)
+// @route   POST /api/users
+// @access  Private/Admin
+export const createUser = async (req, res, next) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      res.status(400);
+      throw new Error('User with this email already exists');
+    }
+
+    // Create new user
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: role || 'user',
+      isVerified: true // Admin-created users are automatically verified
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

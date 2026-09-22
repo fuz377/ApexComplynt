@@ -1,19 +1,21 @@
+// import dns from "node:dns/promises";
+// dns.setServers(["1.1.1.1"]);
+
 import express from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+
 import connectDB from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import complaintRoutes from './routes/complaintRoutes.js';
-import { log } from 'console';
-
-import dns from "node:dns/promises";
-dns.setServers(["1.1.1.1"]);
-
+import dotenv from 'dotenv';
 dotenv.config();
 
-// Connect to MongoDB
+import dns from "node:dns/promises";   
+dns.setServers(["1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4"]);
+
+
 connectDB();
 
 const app = express();

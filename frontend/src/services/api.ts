@@ -78,8 +78,8 @@ class API {
 
   // ================= GENERIC METHODS =================
 
-  get<T = unknown>(url: string): Promise<AxiosResponse<T>> {
-    return this.api.get<T>(url);
+  get<T = unknown>(url: string, config?: any): Promise<AxiosResponse<T>> {
+    return this.api.get<T>(url, config);
   }
 
   post<T = unknown, D = unknown>(
@@ -233,5 +233,15 @@ export const complaintApi = {
 
   deleteComplaint(id: string) {
     return api.delete(`/complaints/${id}`);
+  },
+
+  getAnalytics() {
+    return api.get<{ data: any }>('/complaints/admin/analytics');
+  },
+
+  downloadAnalyticsPDF() {
+    return api.get('/complaints/admin/analytics/pdf/download', {
+      responseType: 'blob'
+    });
   }
 };

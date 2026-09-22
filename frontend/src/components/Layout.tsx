@@ -12,8 +12,9 @@ const Layout: React.FC = () => {
   const navItems = useMemo(() => {
     return isAdmin
       ? [
-          // { label: "Dashboard", path: "/admin", exact: true },
-          // { label: "Complaints", path: "/admin/complaints", exact: true },
+          { label: "Complaints", path: "/admin", exact: true },
+          { label: "Analytics", path: "/admin/analytics", exact: true },
+          { label: "Users", path: "/admin/users", exact: true },
         ]
       : [
           { label: "My Dashboard", path: "/dashboard", exact: true },
